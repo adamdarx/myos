@@ -1,0 +1,110 @@
+     1 00000000                                 ; hello-os
+     2 00000000                                 ; TAB=4
+     3  = 0000000A                              CYLS	EQU		10				; 读取柱面的数量
+     4                                          		ORG		0x7c00			; 指明程序装载地址
+     5 00007C00                                 
+     6 00007C00                                 ; 标准FAT12格式软盘专用的代码 Stand FAT12 format floppy code
+     7 00007C00                                 
+     8 00007C00 EB 4E                           		JMP		entry
+     9 00007C02 90                              		DB		0x90
+    10 00007C03 48 45 4C 4C 4F 49 50 4C         		DB		"HELLOIPL"		; 启动扇区名称（8字节）
+    11 00007C0B 0200                            		DW		512				; 每个扇区（sector）大小（必须512字节）
+    12 00007C0D 01                              		DB		1				; 簇（cluster）大小（必须为1个扇区）
+    13 00007C0E 0001                            		DW		1				; FAT起始位置（一般为第一个扇区）
+    14 00007C10 02                              		DB		2				; FAT个数（必须为2）
+    15 00007C11 00E0                            		DW		224				; 根目录大小（一般为224项）
+    16 00007C13 0B40                            		DW		2880			; 该磁盘大小（必须为2880扇区1440*1024/512）
+    17 00007C15 F0                              		DB		0xf0			; 磁盘类型（必须为0xf0）
+    18 00007C16 0009                            		DW		9				; FAT的长度（必??9扇区）
+    19 00007C18 0012                            		DW		18				; 一个磁道（track）有几个扇区（必须为18）
+    20 00007C1A 0002                            		DW		2				; 磁头数（必??2）
+    21 00007C1C 00000000                        		DD		0				; 不使用分区，必须是0
+    22 00007C20 00000B40                        		DD		2880			; 重写一次磁盘大小
+    23 00007C24 00 00 29                        		DB		0,0,0x29		; 意义不明（固定）
+    24 00007C27 FFFFFFFF                        		DD		0xffffffff		; （可能是）卷标号码
+    25 00007C2B 48 45 4C 4C 4F 2D 4F 53 20 20   		DB		"HELLO-OS   "	; 磁盘的名称（必须为11字?，不足填空格）
+       00007C35 20 
+    26 00007C36 46 41 54 31 32 20 20 20         		DB		"FAT12   "		; 磁盘格式名称（必??8字?，不足填空格）
+    27 00007C3E 00 00 00 00 00 00 00 00 00 00   		RESB	18				; 先空出18字节
+       00007C48 00 00 00 00 00 00 00 00 
+    28 00007C50                                 
+    29 00007C50                                 ; 程序主体
+    30 00007C50                                 
+    31 00007C50                                 entry:
+    32 00007C50 B8 0000                         		MOV		AX,0			; 初始化寄存器
+    33 00007C53 8E D0                           		MOV		SS,AX
+    34 00007C55 BC 7C00                         		MOV		SP,0x7c00
+    35 00007C58 8E D8                           		MOV		DS,AX
+    36 00007C5A B8 0820                         		MOV		AX, 0x0820
+    37 00007C5D 8E C0                           		MOV		ES, AX
+    38 00007C5F B5 00                           		MOV		CH, 0  ; 0号柱面
+    39 00007C61 B6 00                           		MOV		DH, 0  ; 0号磁头（正面）
+    40 00007C63 B1 02                           		MOV		CL, 2  ; 2号扇区
+    41 00007C65                                 readloop:
+    42 00007C65 BE 0000                         		MOV		SI, 0  ; 记录失败次数的寄存器（本来应该用CX，但是CL和CH已经被占用了）
+    43 00007C68                                 retry:
+    44 00007C68 B4 02                           		MOV		AH, 0x02
+    45 00007C6A B0 01                           		MOV		AL, 1
+    46 00007C6C BB 0000                         		MOV		BX, 0
+    47 00007C6F B2 00                           		MOV 	DL, 0x00
+    48 00007C71 CD 13                           		INT  	0x13
+    49 00007C73 73 10                           		JNC  	next
+    50 00007C75 83 C6 01                        		ADD  	SI, 1  ; jnc没有执行，则说明有错误发生了！
+    51 00007C78 83 FE 05                        		CMP  	SI, 5
+    52 00007C7B 73 3D                           		JAE  	error  ;  如果si中的错误次数大于等于5，则跳转到error代码段
+    53 00007C7D B4 00                           		MOV  	AH, 0x00  ; 重置
+    54 00007C7F B2 00                           		MOV  	DL, 0x00  ; 重置
+    55 00007C81 CD 13                           		INT  	0x13
+    56 00007C83 EB E3                           		JMP 	retry  ; 循环
+    57 00007C85                                 next:
+    58 00007C85 8C C0                           		MOV		AX,ES			; 把内存地址后移0x200（512/16十六进制转换）
+    59 00007C87 05 0020                         		ADD		AX,0x0020
+    60 00007C8A 8E C0                           		MOV		ES,AX			; ADD ES,0x020因为没有ADD ES，只能通过AX进行
+    61 00007C8C 80 C1 01                        		ADD		CL, 1
+    62 00007C8F 80 F9 12                        		CMP		CL, 18
+    63 00007C92 76 D1                           		JBE		readloop
+    64 00007C94 B1 01                                   MOV     CL, 1
+    65 00007C96 80 C6 01                                ADD     DH, 1
+    66 00007C99 80 FE 02                                CMP     DH, 2
+    67 00007C9C 72 C7                                   JB      readloop
+    68 00007C9E B6 00                           	    MOV     DH, 0
+    69 00007CA0 80 C5 01                                ADD     CH, 1
+    70 00007CA3 80 FD 0A                                CMP     CH, CYLS
+    71 00007CA6 76 BD                                   JBE     readloop
+    72 00007CA8 EB 0B                                   JMP     ok
+    73 00007CAA                                 fin:
+    74 00007CAA F4                              		HLT						; 让CPU停止，等待指令
+    75 00007CAB 88 2E 0FF0                      		MOV		[0x0ff0], CH	; 储存读取柱面数
+    76 00007CAF 0F 83 454D                      		JNC		0xc200			; 若无异常则跳转到系统起始位置
+    77 00007CB3 EB F5                           		JMP		fin				; 无限循环
+    78 00007CB5                                 
+    79 00007CB5                                 ok:
+    80 00007CB5 BE 7CD1                         	MOV SI, ok_msg	
+    81 00007CB8 EB 05                           	JMP putloop
+    82 00007CBA                                 
+    83 00007CBA                                 error:
+    84 00007CBA BE 7D03                         	MOV SI, err_msg
+    85 00007CBD EB 00                           	JMP putloop
+    86 00007CBF                                 
+    87 00007CBF                                 putloop:
+    88 00007CBF 8A 04                           		MOV AL, [SI]
+    89 00007CC1 83 C6 01                        		ADD SI, 1
+    90 00007CC4 3C 00                           		CMP AL, 0
+    91 00007CC6 74 E2                           		JE fin
+    92 00007CC8 B4 0E                           		MOV AH, 0x0e
+    93 00007CCA BB 000F                         		MOV BX, 15
+    94 00007CCD CD 10                           		INT 0x10
+    95 00007CCF EB EE                           		JMP putloop
+    96 00007CD1                                 
+    97 00007CD1                                 ok_msg:
+    98 00007CD1 52 65 61 64 69 6E 67 20 31 30   		DB "Reading 10 cylinders finished! Congratulations!", 0x0d, 0x0a, 0
+       00007CDB 20 63 79 6C 69 6E 64 65 72 73 
+       00007CE5 20 66 69 6E 69 73 68 65 64 21 
+       00007CEF 20 43 6F 6E 67 72 61 74 75 6C 
+       00007CF9 61 74 69 6F 6E 73 21 0D 0A 00 
+    99 00007D03                                 
+   100 00007D03                                 err_msg:
+   101 00007D03 41 6E 20 65 72 72 6F 72 20 68   		DB "An error happened! Please check your code.", 0x0d, 0x0a, 0       00007D0D 61 70 70 65 6E 65 64 21 20 50 
+       00007D17 6C 65 61 73 65 20 63 68 65 63 
+       00007D21 6B 20 79 6F 75 72 20 63 6F 64 
+       00007D2B 65 2E 0D 0A 00 
