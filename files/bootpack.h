@@ -13,6 +13,7 @@ struct BOOTINFO { /* 0x0ff0-0x0fff */
 void io_hlt(void);
 void io_cli(void);
 void io_sti(void);
+void io_stihlt(void);
 void io_out8(int port, int data);
 int io_load_eflags(void);
 void io_store_eflags(int eflags);
@@ -76,9 +77,7 @@ void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
 
 /* int.c */
 void init_pic(void);
-void inthandler21(int *esp);
 void inthandler27(int *esp);
-void inthandler2c(int *esp);
 #define PIC0_ICW1		0x0020
 #define PIC0_OCW2		0x0020
 #define PIC0_IMR		0x0021
@@ -91,3 +90,31 @@ void inthandler2c(int *esp);
 #define PIC1_ICW2		0x00a1
 #define PIC1_ICW3		0x00a1
 #define PIC1_ICW4		0x00a1
+
+/* fifo.c */
+struct FIFO8 {
+    unsigned char *buf;
+    int p, q, size, free, flags;
+};
+
+void fifo8_init(struct FIFO8 *fifo, int size, unsigned char *buf);
+int fifo8_put(struct FIFO8 *fifo, unsigned char data);
+int fifo8_get(struct FIFO8 *fifo);
+int fifo8_status(struct FIFO8 *fifo);
+
+/* keyboard.c */
+#define PORT_KEYDAT		0x0060
+#define PORT_KEYSTA		0x0064
+#define PORT_KEYCMD		0x0064
+#define KEYSTA_SEND_NOTREADY	0x02
+#define KEYCMD_WRITE_MODE	0x60
+#define KBC_MODE		0x47
+void inthandler21(int *esp);
+void wait_KBC_sendready(void);
+void init_keyboard(void);
+
+/* mouse.c */
+#define KEYCMD_SENDTO_MOUSE		0xd4
+#define MOUSECMD_ENABLE			0xf4
+void inthandler2c(int *esp);
+void enable_mouse(void);

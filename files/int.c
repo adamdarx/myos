@@ -20,24 +20,3 @@ void init_pic(void)
     io_out8(PIC0_IMR, 0xfb);       // 0x11111011
     io_out8(PIC1_IMR, 0xff);        // 把PIC1的中断禁止
 }
-
-
-void inthandler21(int *esp)
-{
-    struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-    boxfill8(binfo->vram, binfo->scrnx, COL8_000000, 0, 0, 32 * 8 - 1, 15);
-    putfont8_str(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, "INT 21(IRQ-1):PS/2 keyboard");
-    for(;;) {
-        io_hlt();
-    }
-}
-
-void inthandler2c(int *esp)
-{
-    struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-    boxfill8(binfo->vram, binfo->scrnx, COL8_000000, 0, 0, 32 * 8 - 1, 15);
-    putfont8_str(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, "INT 21(IRQ-1):PS/2 mouse");
-    for(;;) {
-        io_hlt();
-    }
-}
